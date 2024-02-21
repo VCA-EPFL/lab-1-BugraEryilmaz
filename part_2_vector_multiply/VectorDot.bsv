@@ -1,7 +1,7 @@
 import Vector::*;
 import BRAM::*;
 
-// Time spent on VectorDot: ____
+// Time spent on VectorDot: <1h
 
 // Please annotate the bugs you find.
 
@@ -42,7 +42,7 @@ module mkVectorDot (VD);
                             address: zeroExtend(pos_a),
                             datain: ?});
 
-        if (pos_a < dim*zeroExtend(i))
+        if (pos_a <= dim*zeroExtend(i)-1+dim) // we need to go over the items [dim*i, dim*(i+1)-1] 
             pos_a <= pos_a + 1;
         else done_a <= True;
 
@@ -56,7 +56,7 @@ module mkVectorDot (VD);
                 address: zeroExtend(pos_b),
                 datain: ?});
 
-        if (pos_b < dim*zeroExtend(i))
+        if (pos_b <= dim*zeroExtend(i)-1+dim) // we need to go over the items [dim*i, dim*(i+1)-1]
             pos_b <= pos_b + 1;
         else done_b <= True;
     
@@ -67,11 +67,12 @@ module mkVectorDot (VD);
         let out_a <- a.portA.response.get();
         let out_b <- b.portA.response.get();
 
-        output_res <=  out_a*out_b;     
+        output_res <=  output_res+out_a*out_b; // We need to accumulate all the sums not overwrite them
         pos_out <= pos_out + 1;
         
         if (pos_out == dim-1) begin
             done_all <= True;
+            ready_start <= False; // When the iteration is done, we need to set this to get new start inputs
         end
 
 
@@ -85,10 +86,11 @@ module mkVectorDot (VD);
         ready_start <= True;
         dim <= dim_in;
         done_all <= False;
-        pos_a <= dim_in*zeroExtend(i);
-        pos_b <= dim_in*zeroExtend(i);
+        pos_a <= dim_in*zeroExtend(i_in); // i is the old value we need to set it to i_in
+        pos_b <= dim_in*zeroExtend(i_in); // i is the old value we need to set it to i_in
         done_a <= False;
         done_b <= False;
+        output_res <= 0; // We need to reset output while starting
         pos_out <= 0;
         i <= i_in;
     endmethod
